@@ -1,7 +1,7 @@
 ﻿using InventCaseAPI.Data.Abstract;
 using InventCaseAPI.Models;
-using System.Data.SqlClient;
 using System.Data;
+using System.Data.SqlClient;
 
 namespace InventCaseAPI.Data.Concrete
 {
@@ -13,14 +13,13 @@ namespace InventCaseAPI.Data.Concrete
             _dbConnection = dbConnection;
         }
 
-
         public List<Sale> GetSalesHistory()
         {
             var connection = _dbConnection.GetConnection();
             var salesHistory = new List<Sale>();
             try
             {
-                SqlCommand command = new SqlCommand("SELECT sales.Id, sales.Date, sales.SalesQuantity, sales.Stock, product.ProductName, " +
+                using var command = new SqlCommand("SELECT sales.Id, sales.Date, sales.SalesQuantity, sales.Stock, product.ProductName, " +
                                                     "product.Cost, product.SalesPrice, store.StoreName FROM InventorySales AS sales " +
                                                     "INNER JOIN Products AS product ON sales.ProductId = product.Id " +
                                                     "INNER JOIN Stores AS store ON sales.StoreId = store.Id;", connection);
@@ -43,11 +42,6 @@ namespace InventCaseAPI.Data.Concrete
                     });
                 }
                 reader.Close();
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"GetSalesHistory Error : {ex.ToString()}");
-                throw ex;
             }
             finally
             {
@@ -81,7 +75,6 @@ namespace InventCaseAPI.Data.Concrete
             catch (Exception ex)
             {
                 transaction?.Rollback();
-                System.Diagnostics.Debug.WriteLine($"AddSaleHistory Error : {ex.ToString()}");
                 throw ex;
             }
             finally
@@ -118,7 +111,6 @@ namespace InventCaseAPI.Data.Concrete
             catch (Exception ex)
             {
                 transaction?.Rollback();
-                System.Diagnostics.Debug.WriteLine($"UpdateSaleHistory Error : {ex.ToString()}");
                 throw ex;
             }
             finally
@@ -152,7 +144,6 @@ namespace InventCaseAPI.Data.Concrete
             catch (Exception ex)
             {
                 transaction?.Rollback();
-                System.Diagnostics.Debug.WriteLine($"DeleteSaleHistory Error : {ex.ToString()}");
                 throw ex;
             }
             finally
@@ -165,24 +156,103 @@ namespace InventCaseAPI.Data.Concrete
         private bool CheckSaleHistoryExist(SqlConnection connection, int id)
         {
             bool saleHistoryExist = false;
+            using var command = new SqlCommand($"SELECT Id FROM InventorySales WHERE Id={id};", connection);
+            command.CommandType = CommandType.Text;
+            SqlDataReader reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                saleHistoryExist = true;
+            }
+            reader.Close();
+            return saleHistoryExist;
+        }
+
+
+        public StoreProfit GetStoreProfit(int storeId)
+        {
+            var connection = _dbConnection.GetConnection();
             try
             {
-                SqlCommand command = new SqlCommand($"SELECT Id FROM InventorySales WHERE Id={id};", connection);
+                connection.Open();
+                using var command = new SqlCommand("SELECT store.Id, store.StoreName, SUM((product.SalesPrice - product.Cost) * sales.SalesQuantity) AS Profit" +
+                                                    " FROM InventorySales AS sales INNER JOIN Products AS product ON sales.ProductId = product.Id" +
+                                                    $" INNER JOIN Stores AS store ON sales.StoreId = store.Id WHERE store.Id={storeId} GROUP BY store.Id, store.StoreName;", connection);
                 command.CommandType = CommandType.Text;
                 SqlDataReader reader = command.ExecuteReader();
-
+                var storeProfit = new StoreProfit();
                 while (reader.Read())
                 {
-                    saleHistoryExist = true;
+                    storeProfit.StoreId = reader.GetInt32("Id");
+                    storeProfit.StoreName = reader.GetString("StoreName");
+                    storeProfit.Profit = reader.GetInt32("Profit");
+                    return storeProfit;
                 }
                 reader.Close();
+                return null;
             }
-            catch (Exception ex)
+            finally
             {
-                System.Diagnostics.Debug.WriteLine($"CheckSaleHistoryExist Error : {ex.ToString()}");
-                throw ex;
+                connection?.Close();
             }
-            return saleHistoryExist;
+        }
+
+        public StoreProfit GetMostProfitableStore()
+        {
+            var connection = _dbConnection.GetConnection();
+            try
+            {
+                connection.Open();
+                using var command = new SqlCommand("SELECT TOP 1 store.Id, store.StoreName, SUM((product.SalesPrice - product.Cost) * sales.SalesQuantity) profit" +
+                                                    " FROM InventorySales AS sales INNER JOIN Products AS product ON sales.ProductId = product.Id" +
+                                                    " INNER JOIN Stores AS store ON sales.StoreId = store.Id" +
+                                                    " GROUP BY store.Id, store.StoreName ORDER BY profit DESC;", connection);
+                command.CommandType = CommandType.Text;
+                SqlDataReader reader = command.ExecuteReader();
+                var storeProfit = new StoreProfit();
+                while (reader.Read())
+                {
+                    storeProfit.StoreId = reader.GetInt32("Id");
+                    storeProfit.StoreName = reader.GetString("StoreName");
+                    storeProfit.Profit = reader.GetInt32("Profit");
+                    return storeProfit;
+                }
+                reader.Close();
+                return null;
+            }
+            finally
+            {
+                connection?.Close();
+            }
+        }
+
+        public BestSellerProduct GetBestSellerProduct()
+        {
+            var connection = _dbConnection.GetConnection();
+            try
+            {
+                connection.Open();
+                using var command = new SqlCommand("SELECT TOP 1 product.Id, product.ProductName, SUM(sales.SalesQuantity) AS SalesQuantity" +
+                                                    " FROM InventorySales AS sales INNER JOIN Products AS product ON sales.ProductId = product.Id" +
+                                                    " INNER JOIN Stores AS store ON sales.StoreId = store.Id" +
+                                                    " GROUP BY product.Id, product.ProductName ORDER BY SalesQuantity DESC;", connection);
+                command.CommandType = CommandType.Text;
+                SqlDataReader reader = command.ExecuteReader();
+                var bestSellerProduct = new BestSellerProduct();
+                while (reader.Read())
+                {
+                    bestSellerProduct.Id = reader.GetInt32("Id");
+                    bestSellerProduct.Name = reader.GetString("ProductName");
+                    bestSellerProduct.SalesQuantity = reader.GetInt32("SalesQuantity");
+                    return bestSellerProduct;
+                }
+                reader.Close();
+                return null;
+            }
+            finally
+            {
+                connection?.Close();
+            }
         }
     }
 }

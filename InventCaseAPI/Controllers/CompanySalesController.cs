@@ -50,5 +50,32 @@ namespace InventCaseAPI.Controllers
                 return Ok(Id);
             return BadRequest();
         }
+
+        [HttpGet("store-profit")]
+        public ActionResult<StoreProfit> GetStoreProfit([FromQuery] int storeId)
+        {
+            var storeProfit = _saleDal.GetStoreProfit(storeId);
+            if (storeProfit == null)
+                return BadRequest();
+            return Ok(storeProfit);
+        }
+
+        [HttpGet("most-profitable-store")]
+        public ActionResult<StoreProfit> GetMostProfitableStore()
+        {
+            var mostProfitableStore = _saleDal.GetMostProfitableStore();
+            if (mostProfitableStore == null)
+                return NotFound();
+            return Ok(mostProfitableStore);
+        }
+
+        [HttpGet("best-seller-product")]
+        public ActionResult<BestSellerProduct> GetBestSellerProduct()
+        {
+            var bestSellerProduct = _saleDal.GetBestSellerProduct();
+            if (bestSellerProduct == null)
+                return NotFound();
+            return Ok(bestSellerProduct);
+        }
     }
 }

@@ -2,6 +2,7 @@ using InventCaseAPI.Constants.Configurations;
 using InventCaseAPI.Data;
 using InventCaseAPI.Data.Abstract;
 using InventCaseAPI.Data.Concrete;
+using InventCaseAPI.Helpers;
 using Microsoft.Extensions.Configuration;
 
 namespace InventCaseAPI
@@ -33,6 +34,7 @@ namespace InventCaseAPI
 
             app.UseAuthorization();
 
+            app.UseMiddleware<ErrorHandlerMiddleware>();
 
             app.MapControllers();
 
