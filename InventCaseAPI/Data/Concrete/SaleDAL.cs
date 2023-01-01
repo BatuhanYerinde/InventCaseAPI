@@ -66,7 +66,7 @@ namespace InventCaseAPI.Data.Concrete
                     command.Parameters.Add(new SqlParameter("StoreId", sale.StoreId));
                     command.Parameters.Add(new SqlParameter("Date", sale.Date.Date));
                     command.Parameters.Add(new SqlParameter("SalesQuantity", sale.SaleQuantity));
-                    command.Parameters.Add(new SqlParameter("Stock", sale.Stock - sale.SaleQuantity));
+                    command.Parameters.Add(new SqlParameter("Stock", sale.Stock));
                     insertedSaleId = (int)command.ExecuteScalar();
 
                     transaction.Commit();
